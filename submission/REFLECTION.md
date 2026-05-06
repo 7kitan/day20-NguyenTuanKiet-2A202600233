@@ -4,9 +4,9 @@
 
 ---
 
-**Họ Tên:** _<Họ Tên>_
-**Cohort:** _<A20-K1 / A20-K2 / ...>_
-**Ngày submit:** _<YYYY-MM-DD>_
+**Họ Tên:** Nguyễn Tuấn Kiệt
+**Cohort:** A20-K1
+**Ngày submit:** 2026-05-06
 
 ---
 
@@ -14,18 +14,18 @@
 
 > Paste output của `python 00-setup/detect-hardware.py` vào đây, hoặc điền thủ công:
 
-- **OS:** _<macOS 14 / Windows 11 / Ubuntu 24.04 / ...>_
-- **CPU:** _<Apple M2 / Intel i7-12700H / AMD Ryzen 7 5800H / ...>_
-- **Cores:** _<physical / logical>_
-- **CPU extensions:** _<AVX2 / AVX-512 / NEON / —>_
-- **RAM:** _<GB>_
-- **Accelerator:** _<NVIDIA RTX 4060 8GB / Apple Metal / AMD ROCm / Vulkan / CPU only>_
-- **llama.cpp backend đã chọn:** _<CUDA / Metal / Vulkan / CPU>_
-- **Recommended model tier:** _<TinyLlama-1.1B / Qwen2.5-1.5B / Llama-3.2-3B / Qwen2.5-7B>_
+- **OS:** macOS
+- **CPU:** Apple M1 Pro
+- **Cores:** 10 physical / 10 logical
+- **CPU extensions:** NEON (ARM64)
+- **RAM:** 16 GB
+- **Accelerator:** Apple Metal
+- **llama.cpp backend đã chọn:** Metal
+- **Recommended model tier:** Llama-3.2-3B-Instruct (Q4_K_M)
 
 **Setup story** (≤ 80 chữ): những gì cần thay đổi để lab chạy được trên máy bạn (vd: dùng WSL2, install CUDA Toolkit, fall back sang Vulkan vì ROCm phiên bản kén, tắt antivirus để pip install nhanh hơn, v.v.):
 
-_Answer here._
+Model Llama-3.2-3B-Instruct Q4_K_M được recommend nhưng không có sẵn, phải chuyển sang Q3_K_L. Metal backend hoạt động ngay với llama.cpp trên M1 Pro 16GB RAM, không cần config thêm.
 
 ---
 
@@ -35,12 +35,12 @@ _Answer here._
 
 | Model | Load (ms) | TTFT P50/P95 (ms) | TPOT P50/P95 (ms) | E2E P50/P95/P99 (ms) | Decode rate (tok/s) |
 |---|--:|--:|--:|--:|--:|
-| (Q4_K_M) | | | | | |
-| (Q2_K)   | | | | | |
+| Q4_K_M | 5126 | 308 / 503 | 79.4 / 82.6 | 5314 / 5531 / 5546 | 12.6 |
+| Q3_K_L | 2992 | 326 / 421 | 140.9 / 143.9 | 9216 / 9310 / 9332 | 7.1 |
 
-**Một quan sát** (≤ 50 chữ): Q4_K_M vs Q2_K trên máy bạn — số liệu nói gì? Quality đáng đánh đổi không?
+**Một quan sát** (≤ 50 chữ): Q4_K_M vs Q3_K_L trên máy bạn — số liệu nói gì? Quality đáng đánh đổi không?
 
-_Answer here._
+Q4_K_M nhanh gấp đôi (12.6 vs 7.1 tok/s) và E2E latency thấp hơn nhiều (5.3s vs 9.2s). Q3_K_L chỉ thắng ở load time. Nếu có sẵn Q4_K_M thì đáng dùng hơn vì performance gap quá lớn.
 
 ---
 
@@ -50,31 +50,51 @@ _Answer here._
 
 | Concurrency | Total RPS | TTFB P50 (ms) | E2E P95 (ms) | E2E P99 (ms) | Failures |
 |--:|--:|--:|--:|--:|--:|
-| 10 | | | | | |
-| 50 | | | | | |
+| 10 | 0.73 | 11000 | 19000 | 20000 | 0 |
+| 50 | 0.87 | 15000 | 29000 | 30000 | 0 |
 
-**KV-cache observation** (từ `record-metrics.py`): peak `llamacpp:kv_cache_usage_ratio` ở concurrency 50 = _<0.XX>_, nghĩa là …
-
-_Answer here._
+**KV-cache observation** (từ `record-metrics.py`): Server có 4 parallel slots với utilization ~98.5% (`n_busy_slots_per_decode=3.94`). Requests deferred tăng từ 0 lên peak 46 khi concurrency 50 vượt quá 4 slots. Metrics `llamacpp:kv_cache_usage_ratio` và `llamacpp:kv_cache_tokens` không được expose bởi llama-server build này (version 9020 từ Homebrew), mặc dù server đã chạy với flags `--metrics` và `--cache-prompt`. KV cache đang hoạt động internally (cần thiết cho parallel slots), nhưng không thể đo được cache hit rate.
 
 ---
 
 ## 4. Track 03 — Milestone integration
 
-- **N16 (Cloud/IaC):** _<piece you connected — k3d cluster / GCP project / docker-compose / "stub: localhost only">_
-- **N17 (Data pipeline):** _<piece — Airflow DAG / batch job / "stub: in-memory dict">_
-- **N18 (Lakehouse):** _<piece — Delta Lake table / Iceberg / "stub: SQLite">_
-- **N19 (Vector + Feature Store):** _<piece — Qdrant index / Feast / "stub: TOY_DOCS">_
+- **N16 (Cloud/IaC):** stub: localhost only, no K8s/Docker
+- **N17 (Data pipeline):** stub: static JSONL corpus (10 docs)
+- **N18 (Lakehouse):** stub: local file (corpus_sample.jsonl), no Delta Lake
+- **N19 (Vector + Feature Store):** Adapted from day19/app/search.py - hybrid search (BM25 + semantic + RRF) copied to local search.py. Falls back to keyword matching if dependencies unavailable.
+
+**Pipeline run output** (3 example queries with retrieved-context provenance):
+
+```
+=== Why is goodput more useful than throughput? ===
+Loading searcher from /Users/kitan/dev/day20/03-milestone-integration/data/corpus_sample.jsonl...
+Warning: could not load Searcher: Missing dependencies: fastembed, qdrant-client, rank-bm25
+Falling back to toy data (no real vector search)
+  contexts: ['n20-paged', 'n20-radix', 'n20-disagg']
+  timings : {'embed': 10.0, 'retrieve': 0.0, 'llm': 1876.6, 'total': 1879.1}
+  answer  : I couldn't find any information in the provided documents about why goodput is more useful...
+
+=== What problem does PagedAttention actually solve? ===
+  contexts: ['n20-paged', 'n20-radix', 'n20-disagg']
+  timings : {'embed': 10.0, 'retrieve': 0.0, 'llm': 1023.7, 'total': 1023.8}
+  answer  : PagedAttention treats KV cache like virtual memory pages, eliminating 60-80% fragmentation...
+
+=== When should I think about disaggregated serving? ===
+  contexts: ['n20-disagg', 'n20-paged', 'n20-radix']
+  timings : {'embed': 10.0, 'retrieve': 0.1, 'llm': 2367.8, 'total': 2368.0}
+  answer  : Based on the provided documents, you should consider disaggregated serving when...
+```
 
 **Nơi tốn nhiều ms nhất** trong pipeline (đo bằng `time.perf_counter` trong `pipeline.py`):
 
-- embed: _<ms>_
-- retrieve: _<ms>_
-- llama-server: _<ms>_
+- embed: ~0 ms (toy data fallback, no real embeddings)
+- retrieve: 0.0-0.1 ms (toy keyword matching)
+- llama-server: 1024-2368 ms (range across 3 queries)
 
 **Reflection** (≤ 60 chữ): bottleneck nằm ở đâu? Có khớp với kỳ vọng không?
 
-_Answer here._
+Bottleneck hoàn toàn nằm ở llama-server (1.0-2.4s), chiếm >99% total time. Retrieve <1ms với toy data. Khớp kỳ vọng: LLM generation là phần chậm nhất trong RAG pipeline. Tối ưu llama-server có impact 100× hơn tối ưu retrieval cho workload này.
 
 ---
 
@@ -102,7 +122,7 @@ _Giải thích như đang nói với một bạn cùng lớp đang ngồi cạnh
 
 _(1–2 câu — không bắt buộc, nhưng người grader đọc tất cả)_
 
-_Answer here._
+Tăng concurrency từ 10 lên 50 users chỉ tăng RPS từ 0.73 lên 0.87 (+19%), nhưng P95 latency tăng từ 19s lên 29s (+53%). Server đã saturated ở 4 parallel slots - thêm users chỉ tạo queue dài hơn, không tăng throughput. Đây chính là lý do deck nhấn mạnh goodput@SLO thay vì peak throughput.
 
 ---
 

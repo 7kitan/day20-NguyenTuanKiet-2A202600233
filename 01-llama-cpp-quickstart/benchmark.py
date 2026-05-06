@@ -5,6 +5,7 @@ Loads the primary GGUF model, measures TTFT/TPOT/P50/P95/P99, then loads
 the comparison quantization and reruns the same prompts. Writes a results
 markdown to benchmarks/01-quickstart-results.md.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,9 +18,15 @@ from pathlib import Path
 try:
     from llama_cpp import Llama
 except ImportError:
-    print("ERROR: llama_cpp not installed. Run the platform setup script.", file=sys.stderr)
+    print(
+        "ERROR: llama_cpp not installed. Run the platform setup script.",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 PROMPTS = [
     "Explain TTFT and TPOT in one sentence each.",
@@ -50,7 +57,10 @@ def env_float(name: str, default: float) -> float:
 def load_active() -> dict:
     p = Path("models/active.json")
     if not p.exists():
-        print("ERROR: models/active.json missing. Run 00-setup/download-model.py.", file=sys.stderr)
+        print(
+            "ERROR: models/active.json missing. Run 00-setup/download-model.py.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return json.loads(p.read_text())
 
@@ -60,7 +70,9 @@ def load_hardware() -> dict:
     return json.loads(p.read_text()) if p.exists() else {}
 
 
-def make_llm(model_path: str, n_threads: int, n_ctx: int, n_batch: int, n_gpu_layers: int) -> Llama:
+def make_llm(
+    model_path: str, n_threads: int, n_ctx: int, n_batch: int, n_gpu_layers: int
+) -> Llama:
     return Llama(
         model_path=model_path,
         n_ctx=n_ctx,
@@ -71,7 +83,9 @@ def make_llm(model_path: str, n_threads: int, n_ctx: int, n_batch: int, n_gpu_la
     )
 
 
-def measure_one(llm: Llama, prompt: str, max_tokens: int, temperature: float) -> tuple[float, float, int]:
+def measure_one(
+    llm: Llama, prompt: str, max_tokens: int, temperature: float
+) -> tuple[float, float, int]:
     """Returns (ttft_ms, tpot_ms, n_tokens)."""
     start = time.perf_counter()
     first_token_at = None
@@ -100,7 +114,9 @@ def measure_one(llm: Llama, prompt: str, max_tokens: int, temperature: float) ->
 def quantile(data: list[float], q: float) -> float:
     if not data:
         return 0.0
-    return statistics.quantiles(sorted(data), n=100, method="inclusive")[max(0, int(q) - 1)]
+    return statistics.quantiles(sorted(data), n=100, method="inclusive")[
+        max(0, int(q) - 1)
+    ]
 
 
 def benchmark_model(label: str, path: str, hw: dict) -> dict:
@@ -112,7 +128,9 @@ def benchmark_model(label: str, path: str, hw: dict) -> dict:
     max_tok = env_int("LAB_MAX_TOKENS", 64)
 
     print(f"\n── Loading {label}: {Path(path).name}")
-    print(f"   n_threads={n_threads}  n_ctx={n_ctx}  n_batch={n_batch}  n_gpu_layers={n_gpu_layers}")
+    print(
+        f"   n_threads={n_threads}  n_ctx={n_ctx}  n_batch={n_batch}  n_gpu_layers={n_gpu_layers}"
+    )
 
     t0 = time.perf_counter()
     llm = make_llm(path, n_threads, n_ctx, n_batch, n_gpu_layers)
@@ -133,7 +151,9 @@ def benchmark_model(label: str, path: str, hw: dict) -> dict:
             ttfts.append(ttft)
             tpots.append(tpot)
             e2es.append(e2e)
-            print(f"   [{i+1:2d}/{len(PROMPTS)}] ttft={ttft:6.1f}ms  tpot={tpot:5.1f}ms  e2e={e2e:7.1f}ms  tok={ntok}")
+            print(
+                f"   [{i + 1:2d}/{len(PROMPTS)}] ttft={ttft:6.1f}ms  tpot={tpot:5.1f}ms  e2e={e2e:7.1f}ms  tok={ntok}"
+            )
 
     summary = {
         "label": label,
@@ -150,7 +170,9 @@ def benchmark_model(label: str, path: str, hw: dict) -> dict:
         "e2e_ms_p50": round(quantile(e2es, 50), 1),
         "e2e_ms_p95": round(quantile(e2es, 95), 1),
         "e2e_ms_p99": round(quantile(e2es, 99), 1),
-        "decode_rate_tok_s": round(1000.0 / max(statistics.median(tpots), 0.001), 1) if tpots else 0,
+        "decode_rate_tok_s": round(1000.0 / max(statistics.median(tpots), 0.001), 1)
+        if tpots
+        else 0,
     }
     return summary
 
@@ -172,7 +194,7 @@ def render_md(primary: dict, compare: dict) -> str:
 
     return f"""# 01 — Quickstart Results
 
-Settings: `n_threads={primary['n_threads']}`, `n_ctx={primary['n_ctx']}`, `n_batch={primary['n_batch']}`, `n_gpu_layers={primary['n_gpu_layers']}`.
+Settings: `n_threads={primary["n_threads"]}`, `n_ctx={primary["n_ctx"]}`, `n_batch={primary["n_batch"]}`, `n_gpu_layers={primary["n_gpu_layers"]}`.
 
 | Model | Load (ms) | TTFT P50/P95 (ms) | TPOT P50/P95 (ms) | E2E P50/P95/P99 (ms) | Decode rate (tok/s) |
 |---|---:|---:|---:|---:|---:|

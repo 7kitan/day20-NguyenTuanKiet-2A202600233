@@ -3,6 +3,8 @@
 # Linux + macOS. Windows users: see start-server.ps1.
 set -euo pipefail
 
+
+
 cd "$(dirname "$0")/.."
 
 MODEL=$(python -c 'import json; print(json.load(open("models/active.json"))["primary_model"])')
@@ -20,9 +22,16 @@ echo "    ctx       : $CTX"
 echo "    listening : http://0.0.0.0:8080"
 echo
 
-exec python -m llama_cpp.server \
+# exec python -m llama_cpp.server \
+#     --model "$MODEL" \
+#     --host 0.0.0.0 --port 8080 \
+#     --n_threads "$THREADS" \
+#     --n_gpu_layers "$GPU_LAYERS" \
+#     --n_ctx "$CTX" \
+#     --metrics
+exec llama-server \
     --model "$MODEL" \
     --host 0.0.0.0 --port 8080 \
-    --n_threads "$THREADS" \
     --n_gpu_layers "$GPU_LAYERS" \
-    --n_ctx "$CTX"
+    --metrics \
+    --cache-prompt

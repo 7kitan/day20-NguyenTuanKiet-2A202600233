@@ -1,0 +1,10 @@
+{"doc_id": "n20-paged", "topic": "serving", "title": "PagedAttention for KV cache", "text": "PagedAttention treats KV cache like virtual memory pages, eliminating 60-80% fragmentation. Used in vLLM and SGLang."}
+{"doc_id": "n20-radix", "topic": "serving", "title": "RadixAttention prefix caching", "text": "RadixAttention stores KV in a prefix trie; cache hit on shared prefix lets the engine skip prefill. Implemented in SGLang."}
+{"doc_id": "n20-disagg", "topic": "serving", "title": "Disaggregated serving architecture", "text": "Disaggregated serving (Mooncake, llm-d, Dynamo) splits prefill and decode onto separate GPU pools for better resource utilization."}
+{"doc_id": "n20-goodput", "topic": "metrics", "title": "Goodput vs throughput", "text": "Goodput@SLO = req/s satisfying TTFT and TPOT SLOs. Throughput at saturation ignores SLO and measures peak capacity."}
+{"doc_id": "n20-quant", "topic": "quantization", "title": "GGUF quantization for edge", "text": "GGUF Q4_K_M is the production-quality default for laptop/edge serving via llama.cpp. Balances quality and memory."}
+{"doc_id": "n20-ttft", "topic": "metrics", "title": "Time to first token", "text": "TTFT (Time To First Token) measures prefill latency. Critical for user-perceived responsiveness in chat applications."}
+{"doc_id": "n20-tpot", "topic": "metrics", "title": "Time per output token", "text": "TPOT (Time Per Output Token) measures decode speed. Affects streaming smoothness and total generation time."}
+{"doc_id": "n20-kvcache", "topic": "serving", "title": "KV cache management", "text": "KV cache stores key-value pairs from attention layers. Proper management via paging or quantization reduces memory waste."}
+{"doc_id": "n20-batch", "topic": "serving", "title": "Continuous batching", "text": "Continuous batching allows new requests to join mid-generation, maximizing GPU utilization compared to static batching."}
+{"doc_id": "n20-metal", "topic": "backend", "title": "Metal backend for Apple Silicon", "text": "Metal backend in llama.cpp leverages unified memory on M1/M2/M3 chips for efficient inference without discrete GPU."}

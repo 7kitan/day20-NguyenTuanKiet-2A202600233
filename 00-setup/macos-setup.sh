@@ -28,10 +28,11 @@ brew list cmake >/dev/null 2>&1 || brew install cmake
 PYTHON="${PYTHON:-python3}"
 if [[ ! -d .venv ]]; then
   echo "==> Creating .venv with $PYTHON"
-  "$PYTHON" -m venv .venv
+  uv venv
 fi
 # shellcheck source=/dev/null
 source .venv/bin/activate
+python -m ensurepip
 
 echo "==> Upgrading pip"
 python -m pip install --upgrade pip wheel >/dev/null
