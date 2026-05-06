@@ -1,0 +1,6 @@
+{
+  "tier": "Llama-3.2-3B-Instruct",
+  "repo_id": "bartowski/Llama-3.2-3B-Instruct-GGUF",
+  "primary_model": "models/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+  "compare_model": "models/Llama-3.2-3B-Instruct-Q3_K_L.gguf"
+}
